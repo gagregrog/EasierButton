@@ -1,0 +1,25 @@
+{
+  "name": "EasierButton",
+  "version": "1.0.0",
+  "description": "Wrapper around EasyButton since some of the API doesn't seem to work for me. Most likely user error, yet here we are..",
+  "keywords": "button, press, callback",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RobertMcReed/EasierButton.git"
+  },
+  "authors": [
+    {
+      "name": "Robert Reed",
+      "email": "robert.mc.reed@gmail.com",
+      "url": "https://github.com/RobertMcReed",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/RobertMcReed/EasierButton",
+  "dependencies": {
+    "evert-arias/EasyButton": "^2.0.1"
+  },
+  "frameworks": "arduino",
+  "platforms": "*"
+}
