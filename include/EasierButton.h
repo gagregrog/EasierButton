@@ -10,15 +10,13 @@
 #include "Arduino.h"
 #include <EasyButton.h>
 #include <vector>
+#include "HoldObj.h"
 
 typedef void (*voidCallback) ();
 typedef void (*voidCallbackLong) (unsigned long);
 
 typedef std::function<void()> callback;
-typedef std::vector<callback> callback_vector;
-
-typedef std::vector<unsigned long> long_vector;
-typedef std::vector<bool> bool_vector;
+typedef std::vector<HoldObj> hold_obj_vector;
 
 class EasierButton
 {
@@ -62,9 +60,7 @@ class EasierButton
     voidCallback _onReleased;
     voidCallbackLong _onReleasedLong;
 
-    bool_vector onHoldBools;
-    long_vector onHoldDurations;
-    callback_vector onHoldCallbacks;
+    hold_obj_vector onHoldObjs;
 };
 
 #endif

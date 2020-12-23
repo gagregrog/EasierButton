@@ -8,6 +8,7 @@
 #include <EasyButton.h>
 #include "EasierButton.h"
 #include <vector>
+#include "HoldObj.h"
 
 void debug(int val) {
   #ifdef EASIER_DEBUG
@@ -162,25 +163,20 @@ void EasierButton::update()
 {
   easyButton.read();
 
-  for(unsigned int i = 0; i < onHoldCallbacks.size(); i++) {
-    bool called = onHoldBools[i];
+  for(HoldObj &obj : onHoldObjs) {
+    if (obj.called) continue;
 
-    if (called) continue;
-
-    uint32_t timeout = onHoldDurations[i];
-    if (_lastState && easyButton.pressedFor(timeout))
+    if (_lastState && easyButton.pressedFor(obj.duration))
     {
-      onHoldBools[i] = true;
-      callback  cb = onHoldCallbacks[i];
-      cb();
+      obj.trigger();
     }
   }
 
   if (easyButton.wasReleased())
   {
-    for(unsigned int i = 0; i < onHoldCallbacks.size(); i++)
+    for(HoldObj &obj : onHoldObjs)
     {
-      onHoldBools[i] = false;
+      obj.reset();
     }
     
     _handleReleased();
@@ -217,9 +213,6 @@ void EasierButton::setOnReleased(voidCallbackLong cb) {
 }
 
 void EasierButton::setOnHold(unsigned long duration, callback cb) {
-  onHoldCallbacks.push_back(cb);
-  onHoldDurations.push_back(duration);
-  onHoldBools.push_back(false);
+  HoldObj obj(duration, cb);
+  onHoldObjs.push_back(obj);
 }
-
-
