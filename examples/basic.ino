@@ -4,6 +4,20 @@
   Released into the public domain.
 */
 
+/*
+Button Setup ----------------------------------------------------------------
+
+To use with internal pullup resistor (Default setting):
+    connect one pin of a button high (3.3V or 5V) via a 10k ohm resistor
+    connect the other pin to ground 
+    connect the high side of the button to your desired pin
+
+To use without internal pullup resistor [EasierButton myBtn(btn_pin, false)]:
+    connect one pin of a button high (3.3V or 5V)
+    connect the other pin to ground via a 10k ohm resistor
+    connect the low side of the button to pin your desired pin
+*/
+
 #include <Arduino.h>
 #include <EasierButton.h>
 
@@ -17,7 +31,7 @@ EasierButton myBtn(btn_pin);
 // EasierButton myBtn(btn_pin, debounce);
 
 // defaults to 35ms debounce, sets active_low = pullup
-// bool pullup = true;
+// bool pullup = false;
 // EasierButton myBtn(btn_pin, pullup);
 
 // sets active_low = pullup
@@ -53,16 +67,24 @@ void onRelease(EasyTimer time) {
   Serial.println(F("ms ago."));
 }
 
-void shortPress() {
+void shortHold() {
   Serial.println("You held the button for 1 second.");
 }
 
-void medPress() {
+void medHold() {
   Serial.println("You held the button for 3 seconds");
 }
 
-void longPress() {
+void longHold() {
   Serial.println("You held the button for 5 seconds");
+}
+
+void onSingleClick() {
+  Serial.println("Your press was a SINGLE click");
+}
+
+void onDoubleClick() {
+  Serial.println("Your press was a DOUBLE click");
 }
 
 void setup() {
@@ -71,11 +93,38 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  // onPress callbacks are fired at the rising edge, every single time
   myBtn.setOnPressed(onPress);
+
+  // onRelease callbacks are fired at the falling edge, every single time
   myBtn.setOnReleased(onRelease);
-  myBtn.setOnHold(1000, shortPress);
-  myBtn.setOnHold(3000, medPress);
-  myBtn.setOnHold(5000, longPress);
+
+  // hold callbacks are fired only if the button remains pressed for the specified duration
+  myBtn.setOnHold(1000, shortHold);
+  myBtn.setOnHold(3000, medHold);
+  myBtn.setOnHold(5000, longHold);
+
+  // you can modify the multiClick timeout to allow for slower clicks
+  // myBtn.setMultiClickTimeout(1000);
+
+  // the singleClickCallback is only called if no second press occurs before the MultiClickTimeout
+  // note that this means single button presses will only ever fire once per MultiClickTimeout interval
+  myBtn.setOnSingleClick(onSingleClick);
+
+  // if a second click occurs before the MultiClickTimeout, 
+  // the doubleClickCallback will be called and the singleClickCallback will be ignored
+  // note that unlike onSingleClick, onDoubleClick can be called as quickly as you can double click,
+  // since the timeout is reset after a successful double click and restarted upon the next first click
+  myBtn.setOnDoubleClick(onDoubleClick);
+
+  // Caution:
+  // Use onRelease and onPress callbacks sparingly.
+  // It can quickly become overwhelming if you are using too many kinds of callbacks.
+  // If you need to detect double clicks, use onSingleClick and onDoubleClick without onPress and onRelease.
+
+  // If you don't need to detect double clicks,
+  // consider using void onPress(EasyTimer time); and time.sinceLastPress to determine click frequency,
+  // or void onRelease(EasyTimer time); and time.sinceLastPress to determine hold duration.
 
   // start normally
   // myBtn.begin();

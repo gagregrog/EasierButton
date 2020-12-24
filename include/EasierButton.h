@@ -9,8 +9,9 @@
 
 #include <vector>
 #include "Arduino.h"
-#include <EasyButton.h>
 #include "HoldObj.h"
+#include <EasyButton.h>
+#include "EasyMultiClick.h"
 
 struct EasyTimer {
   unsigned long sinceLastPress;
@@ -47,6 +48,10 @@ class EasierButton
     void setOnReleased(voidCallback cb);
     void setOnReleased(voidCallbackTimer cb);
     void setOnHold(unsigned long duration, callback cb);
+    
+    void setMultiClickTimeout(unsigned long timeout);
+    void setOnSingleClick(voidCallback cb);
+    void setOnDoubleClick(voidCallback cb);
 
   private:
     bool _begun;
@@ -64,6 +69,8 @@ class EasierButton
 
     unsigned long _lastPress;
     unsigned long _lastRelease;
+    unsigned long _multiClickTimeout;
+    int _cachedClicks;
 
     voidCallback _onPressed;
     voidCallbackTimer _onPressedTimer;
@@ -71,7 +78,13 @@ class EasierButton
     voidCallback _onReleased;
     voidCallbackTimer _onReleasedTimer;
 
-    hold_obj_vector onHoldObjs;
+    bool _multiClickSet;
+    EasyMultiClick _multiClick;
+    voidCallback _onSingleClick;
+    voidCallback _onDoubleClick;
+
+    hold_obj_vector _onHoldObjs;
+
 };
 
 #endif

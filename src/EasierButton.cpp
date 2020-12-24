@@ -9,6 +9,7 @@
 #include "HoldObj.h"
 #include <EasyButton.h>
 #include "EasierButton.h"
+#include "EasyMultiClick.h"
 
 // constructor
 EasierButton::EasierButton(uint8_t pin, uint32_t debounce, bool pullUp, bool active_low): easyButton(pin, debounce, pullUp, active_low)
@@ -43,6 +44,7 @@ void EasierButton::_setup()
   _lastState = false;
   _heldAtBoot = false;
   _pressedAtBoot = false;
+  _multiClickSet = false;
 
   unsigned long now = millis();
   _lastPress = now;
@@ -71,6 +73,10 @@ void EasierButton::_handlePressed()
   else if (_onPressed)
   {
     _onPressed();
+  }
+
+  if (_multiClickSet) {
+    _multiClick.inc(now);
   }
 }
 
@@ -167,7 +173,7 @@ void EasierButton::update()
 {
   easyButton.read();
 
-  for(HoldObj &obj : onHoldObjs) {
+  for(HoldObj &obj : _onHoldObjs) {
     if (obj.called) continue;
 
     if (_lastState && easyButton.pressedFor(obj.duration))
@@ -178,7 +184,7 @@ void EasierButton::update()
 
   if (easyButton.wasReleased())
   {
-    for(HoldObj &obj : onHoldObjs)
+    for(HoldObj &obj : _onHoldObjs)
     {
       obj.reset();
     }
@@ -189,6 +195,18 @@ void EasierButton::update()
   if (easyButton.wasPressed())
   {
     _handlePressed();
+  }
+
+  if (_multiClickSet && _multiClick.numClicks() > 0) {
+    if (_multiClick.numClicks() >= 2 && _onDoubleClick) {
+      _onDoubleClick();
+      _multiClick.reset();
+    } else if (_multiClick.overdue()) {
+      _multiClick.reset();
+      if (_onSingleClick) {
+        _onSingleClick();
+      }
+    }
   }
 }
 
@@ -216,7 +234,21 @@ void EasierButton::setOnReleased(voidCallbackTimer cb) {
   _onReleasedTimer = cb;
 }
 
+void EasierButton::setOnSingleClick(voidCallback cb) {
+  _onSingleClick = cb;
+  _multiClickSet = true;
+}
+
+void EasierButton::setOnDoubleClick(voidCallback cb) {
+  _onDoubleClick = cb;
+  _multiClickSet = true;
+}
+
+void EasierButton::setMultiClickTimeout(unsigned long timeout) {
+  _multiClick.setTimeout(timeout);
+}
+
 void EasierButton::setOnHold(unsigned long duration, callback cb) {
   HoldObj obj(duration, cb);
-  onHoldObjs.push_back(obj);
+  _onHoldObjs.push_back(obj);
 }
