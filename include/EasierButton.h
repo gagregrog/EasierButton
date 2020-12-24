@@ -7,13 +7,18 @@
 #ifndef EasierButton_h
 #define EasierButton_h
 
+#include <vector>
 #include "Arduino.h"
 #include <EasyButton.h>
-#include <vector>
 #include "HoldObj.h"
 
+struct EasyTimer {
+  unsigned long sinceLastPress;
+  unsigned long sinceLastRelease;
+};
+
 typedef void (*voidCallback) ();
-typedef void (*voidCallbackLong) (unsigned long);
+typedef void (*voidCallbackTimer) (EasyTimer);
 
 typedef std::function<void()> callback;
 typedef std::vector<HoldObj> hold_obj_vector;
@@ -29,36 +34,42 @@ class EasierButton
     EasierButton(uint8_t pin, uint32_t debounce, bool pullUp, bool active_low);
 
     void begin();
+    bool begin(int duration);
+    unsigned long begin(int duration, bool returnElapsed);
+
     void update();
 
     bool heldAtBoot();
     bool pressedAtBoot();
-    bool blockBoot(int duration);
 
     void setOnPressed(voidCallback cb);
-    void setOnPressed(voidCallbackLong cb);
+    void setOnPressed(voidCallbackTimer cb);
     void setOnReleased(voidCallback cb);
-    void setOnReleased(voidCallbackLong cb);
+    void setOnReleased(voidCallbackTimer cb);
     void setOnHold(unsigned long duration, callback cb);
 
   private:
+    bool _begun;
     bool _lastState;
-    bool _pressedAtBoot;
     bool _heldAtBoot;
+    bool _pressedAtBoot;
 
     void _setup();
     void _handlePressed();
     void _handleReleased();
-    void _checkAtBoot();
+    
+    void _checkBootPress();
+    bool _checkBootHold(int duration);
+    unsigned long _checkBootHold(int duration, bool returnElapsed);
 
     unsigned long _lastPress;
     unsigned long _lastRelease;
 
     voidCallback _onPressed;
-    voidCallbackLong _onPressedLong;
+    voidCallbackTimer _onPressedTimer;
 
     voidCallback _onReleased;
-    voidCallbackLong _onReleasedLong;
+    voidCallbackTimer _onReleasedTimer;
 
     hold_obj_vector onHoldObjs;
 };

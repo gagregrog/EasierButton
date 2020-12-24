@@ -4,35 +4,11 @@
   Released into the public domain.
 */
 
+#include <vector>
 #include "Arduino.h"
+#include "HoldObj.h"
 #include <EasyButton.h>
 #include "EasierButton.h"
-#include <vector>
-#include "HoldObj.h"
-
-void debug(int val) {
-  #ifdef EASIER_DEBUG
-    Serial.print(val);
-  #endif
-}
-
-void debugln(int val) {
-  #ifdef EASIER_DEBUG
-    Serial.println(val);
-  #endif
-}
-
-void debug(String val) {
-  #ifdef EASIER_DEBUG
-    Serial.print(val);
-  #endif
-}
-
-void debugln(String val) {
-  #ifdef EASIER_DEBUG
-    Serial.println(val);
-  #endif
-}
 
 // constructor
 EasierButton::EasierButton(uint8_t pin, uint32_t debounce, bool pullUp, bool active_low): easyButton(pin, debounce, pullUp, active_low)
@@ -63,6 +39,7 @@ EasierButton::EasierButton(uint8_t pin): easyButton(pin, 35, true, true)
 // Private Members
 void EasierButton::_setup()
 {
+  _begun = false;
   _lastState = false;
   _heldAtBoot = false;
   _pressedAtBoot = false;
@@ -79,19 +56,17 @@ void EasierButton::_handlePressed()
   _lastState = true;
   unsigned long now = millis();
   unsigned long pressToPress = now - _lastPress;
-  unsigned long releaseToPress = now - _lastRelease;
   _lastPress = now;
+  
+  unsigned long releaseToPress = now - _lastRelease;
 
-  debugln(F("Button was pressed."));
-  debug(F("It had been "));
-  debug(pressToPress);
-  debug(F(" ms since the button was last pressed, and "));
-  debug(releaseToPress);
-  debugln(F(" ms since the button was last released."));
-
-  if (_onPressedLong)
+  if (_onPressedTimer)
   {
-    _onPressedLong(pressToPress);
+    EasyTimer time = {
+      .sinceLastPress = pressToPress,
+      .sinceLastRelease = releaseToPress,
+    };
+    _onPressedTimer(time);
   }
   else if (_onPressed)
   {
@@ -106,16 +81,17 @@ void EasierButton::_handleReleased()
   _lastState = false;
   unsigned long now = millis();
   unsigned long pressDuration = now - _lastPress;
+  unsigned long sinceLastRelease = now - _lastRelease;
   _lastRelease = now;
 
-  debugln(F("Button was released."));
-  debug(F("The button was pressed for "));
-  debug(pressDuration);
-  debugln(F(" ms."));
-
-  if (_onReleasedLong)
+  if (_onReleasedTimer)
   {
-    _onReleasedLong(pressDuration);
+    EasyTimer time = {
+      .sinceLastPress = pressDuration,
+      .sinceLastRelease = sinceLastRelease,
+    };
+
+    _onReleasedTimer(time);
   }
   else if (_onReleased)
   {
@@ -123,40 +99,68 @@ void EasierButton::_handleReleased()
   }
 }
 
-void EasierButton::_checkAtBoot()
+void EasierButton::_checkBootPress()
 {
   if (easyButton.isPressed())
   {
-    debugln("Button PRESSED at boot.");
     _pressedAtBoot = true;
   }
-  else
-  {
-    debugln("Button not pressed at boot.");
+}
+
+unsigned long EasierButton::_checkBootHold(int duration, bool returnElapsed)
+{
+  unsigned long elapsed = 0;
+  unsigned long start = millis();
+  bool held = easyButton.isPressed();
+  _pressedAtBoot = held;
+
+  while (held && (elapsed < (unsigned long)duration)) {
+    easyButton.read();
+    held = !easyButton.wasReleased();
+    _heldAtBoot = held;
+
+    if (!held) break;
+
+    delay(10); // so we don't go crazy
+    elapsed = millis() - start;
   }
+
+  return elapsed;
+}
+
+bool EasierButton::_checkBootHold(int duration)
+{
+  unsigned long elapsed = _checkBootHold(duration, true);
+
+  return elapsed >= (unsigned long)duration;
 }
 
 // Public Members
 
 void EasierButton::begin() {
+  if (_begun) return;
+
+  _begun = true;
   easyButton.begin();
-  _checkAtBoot();
+  _checkBootPress();
 }
 
-bool EasierButton::blockBoot(int duration)
-{
-  bool held = false;
-  if (easyButton.isPressed())
-  {
-    _pressedAtBoot = true;
-    delay(duration);
-    easyButton.read();
-    held = !easyButton.wasReleased();
-  }
+bool EasierButton::begin(int duration) {
+  if (_begun) return false;
 
-  _heldAtBoot = held;
+  _begun = true;
+  easyButton.begin();
 
-  return held;
+  return _checkBootHold(duration);
+}
+
+unsigned long EasierButton::begin(int duration, bool returnElapsed) {
+  if (_begun) return 0;
+
+  _begun = true;
+  easyButton.begin();
+
+  return _checkBootHold(duration, returnElapsed);
 }
 
 void EasierButton::update()
@@ -200,16 +204,16 @@ void EasierButton::setOnPressed(voidCallback cb) {
   _onPressed = cb;
 }
 
-void EasierButton::setOnPressed(voidCallbackLong cb) {
-  _onPressedLong = cb;
+void EasierButton::setOnPressed(voidCallbackTimer cb) {
+  _onPressedTimer = cb;
 }
 
 void EasierButton::setOnReleased(voidCallback cb) {
   _onReleased = cb;
 }
 
-void EasierButton::setOnReleased(voidCallbackLong cb) {
-  _onReleasedLong = cb;
+void EasierButton::setOnReleased(voidCallbackTimer cb) {
+  _onReleasedTimer = cb;
 }
 
 void EasierButton::setOnHold(unsigned long duration, callback cb) {
