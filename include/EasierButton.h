@@ -18,11 +18,17 @@ struct EasyTimer {
   unsigned long sinceLastRelease;
 };
 
+struct DelayedCb {
+  callback cb;
+  unsigned long duration;
+};
+
 typedef void (*voidCallback) ();
 typedef void (*voidCallbackTimer) (EasyTimer);
 
 typedef std::function<void()> callback;
 typedef std::vector<HoldObj> hold_obj_vector;
+typedef std::vector<DelayedCb> delay_vector;
 
 class EasierButton
 {
@@ -45,13 +51,17 @@ class EasierButton
 
     void setOnPressed(voidCallback cb);
     void setOnPressed(voidCallbackTimer cb);
+    void setOnHold(unsigned long duration, callback cb);
+    
     void setOnReleased(voidCallback cb);
     void setOnReleased(voidCallbackTimer cb);
-    void setOnHold(unsigned long duration, callback cb);
+    void setOnReleasedAfter(unsigned long duration, callback cb);
+    
     
     void setMultiClickTimeout(unsigned long timeout);
     void setOnSingleClick(voidCallback cb);
     void setOnDoubleClick(voidCallback cb);
+    void setOnTripleClick(voidCallback cb);
 
   private:
     bool _begun;
@@ -60,8 +70,11 @@ class EasierButton
     bool _pressedAtBoot;
 
     void _setup();
-    void _handlePressed();
-    void _handleReleased();
+    void _handleCallOverdueHolds();
+    void _handlePressed(unsigned long &now);
+    void _handleReleased(unsigned long &now);
+    void _handleMultiClick(unsigned long &now);
+    void _handleCallOnReleasedAfters(unsigned long &pressDuration);
     
     void _checkBootPress();
     bool _checkBootHold(int duration);
@@ -82,8 +95,10 @@ class EasierButton
     EasyMultiClick _multiClick;
     voidCallback _onSingleClick;
     voidCallback _onDoubleClick;
+    voidCallback _onTripleClick;
 
     hold_obj_vector _onHoldObjs;
+    delay_vector _onReleasedObjs;
 
 };
 

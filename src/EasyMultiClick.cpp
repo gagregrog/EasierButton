@@ -11,7 +11,7 @@
 EasyMultiClick::EasyMultiClick()
 {
   reset();
-  _multiClickTimeout = 500;
+  _multiClickTimeout = 375;
 }
 
 // Public Members
@@ -25,8 +25,16 @@ void EasyMultiClick::setTimeout(unsigned long timeout) {
   _multiClickTimeout = timeout;
 }
 
+unsigned long EasyMultiClick::getTimeout() {
+  return _multiClickTimeout;
+}
+
 bool EasyMultiClick::overdue() {
   return (millis() - _firstClick >= _multiClickTimeout);
+}
+
+bool EasyMultiClick::overdue(unsigned long now) {
+  return (now - _firstClick >= _multiClickTimeout);
 }
 
 void EasyMultiClick::inc(unsigned long now) {

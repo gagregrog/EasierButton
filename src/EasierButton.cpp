@@ -51,12 +51,9 @@ void EasierButton::_setup()
   _lastRelease = now;
 }
 
-void EasierButton::_handlePressed()
-{
-  if (_lastState) return;
-  
+void EasierButton::_handlePressed(unsigned long &now)
+{ 
   _lastState = true;
-  unsigned long now = millis();
   unsigned long pressToPress = now - _lastPress;
   _lastPress = now;
   
@@ -80,12 +77,9 @@ void EasierButton::_handlePressed()
   }
 }
 
-void EasierButton::_handleReleased()
+void EasierButton::_handleReleased(unsigned long &now)
 {
-  if (!_lastState) return;
-
   _lastState = false;
-  unsigned long now = millis();
   unsigned long pressDuration = now - _lastPress;
   unsigned long sinceLastRelease = now - _lastRelease;
   _lastRelease = now;
@@ -102,6 +96,33 @@ void EasierButton::_handleReleased()
   else if (_onReleased)
   {
     _onReleased();
+  }
+
+  // button released, so mark all holds as not called
+  for(HoldObj &obj : _onHoldObjs) obj.reset();
+  _handleCallOnReleasedAfters(pressDuration);
+}
+
+void EasierButton::_handleCallOnReleasedAfters(unsigned long &pressDuration)
+{
+  // iterate over the onReleasedAfter cbs and see find the one with the largest duration that is less then the amount of time the button was pressed for
+  int longestHeldIdx = -1;
+
+  for(unsigned int i = 0; i < _onReleasedObjs.size(); i++)
+  {
+    DelayedCb &obj = _onReleasedObjs[i];
+    if (
+      (pressDuration >= obj.duration) &&
+      (longestHeldIdx < 0 || (_onReleasedObjs[longestHeldIdx].duration < obj.duration))
+    )
+    {
+      longestHeldIdx = i;
+    }
+  }
+
+  // if we found an onReleaseAfter cb that was longer than the length of the button press, call it now
+  if (longestHeldIdx > -1) {
+    _onReleasedObjs[longestHeldIdx].cb();
   }
 }
 
@@ -141,6 +162,52 @@ bool EasierButton::_checkBootHold(int duration)
   return elapsed >= (unsigned long)duration;
 }
 
+void EasierButton::_handleCallOverdueHolds()
+{
+  // check each of the hold callbacks and call if they are past due
+  for(HoldObj &obj : _onHoldObjs) {
+    if (obj.called) continue; // only call once
+
+    if (easyButton.pressedFor(obj.duration))
+    {
+      obj.trigger();
+    }
+  }
+}
+
+void EasierButton::_handleMultiClick(unsigned long &now)
+{
+  int numClicks = _multiClick.numClicks();
+  if (_multiClickSet && numClicks) {
+    if (_onTripleClick) {
+      if (numClicks == 3) {
+        _onTripleClick();
+        _multiClick.reset();
+        return;
+      }
+    } else if (_onDoubleClick) {
+      if (numClicks == 2) {
+        _onDoubleClick();
+        _multiClick.reset();
+        return;
+      }
+    } else if (_onSingleClick) {
+      _onDoubleClick();
+      _multiClick.reset();
+      return;
+    }
+    
+    if (_multiClick.overdue(now)) {
+      _multiClick.reset();
+      if (_onDoubleClick && numClicks == 2) {
+        _onDoubleClick();
+      } else if (_onSingleClick) {
+        _onSingleClick();
+      }
+    }
+  }
+}
+
 // Public Members
 
 void EasierButton::begin() {
@@ -171,43 +238,25 @@ unsigned long EasierButton::begin(int duration, bool returnElapsed) {
 
 void EasierButton::update()
 {
+  unsigned long now = millis();
   easyButton.read();
-
-  for(HoldObj &obj : _onHoldObjs) {
-    if (obj.called) continue;
-
-    if (_lastState && easyButton.pressedFor(obj.duration))
-    {
-      obj.trigger();
-    }
-  }
 
   if (easyButton.wasReleased())
   {
-    for(HoldObj &obj : _onHoldObjs)
-    {
-      obj.reset();
-    }
-    
-    _handleReleased();
+    _handleReleased(now);
   }
 
   if (easyButton.wasPressed())
   {
-    _handlePressed();
+    _handlePressed(now);
   }
 
-  if (_multiClickSet && _multiClick.numClicks() > 0) {
-    if (_multiClick.numClicks() >= 2 && _onDoubleClick) {
-      _onDoubleClick();
-      _multiClick.reset();
-    } else if (_multiClick.overdue()) {
-      _multiClick.reset();
-      if (_onSingleClick) {
-        _onSingleClick();
-      }
-    }
+  if (easyButton.isPressed()) {
+    _handleCallOverdueHolds();
   }
+
+  // must be called each loop
+  _handleMultiClick(now);
 }
 
 bool EasierButton::pressedAtBoot() {
@@ -244,6 +293,15 @@ void EasierButton::setOnDoubleClick(voidCallback cb) {
   _multiClickSet = true;
 }
 
+void EasierButton::setOnTripleClick(voidCallback cb) {
+  _onTripleClick = cb;
+  _multiClickSet = true;
+
+  if (_multiClick.getTimeout() == 375) {
+    _multiClick.setTimeout(600);
+  }
+}
+
 void EasierButton::setMultiClickTimeout(unsigned long timeout) {
   _multiClick.setTimeout(timeout);
 }
@@ -251,4 +309,12 @@ void EasierButton::setMultiClickTimeout(unsigned long timeout) {
 void EasierButton::setOnHold(unsigned long duration, callback cb) {
   HoldObj obj(duration, cb);
   _onHoldObjs.push_back(obj);
+}
+
+void EasierButton::setOnReleasedAfter(unsigned long duration, callback cb) {
+  DelayedCb obj = {
+    cb = cb,
+    duration = duration,
+  };
+  _onReleasedObjs.push_back(obj);
 }

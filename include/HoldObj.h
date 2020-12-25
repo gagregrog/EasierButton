@@ -17,9 +17,9 @@ class HoldObj
   public:
     HoldObj(unsigned long holdDuration, callback cb);
     bool called;
-    unsigned long duration;
     void reset();
     void trigger();
+    unsigned long duration;
   private:
     callback _cb;
 };

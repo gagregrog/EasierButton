@@ -16,8 +16,10 @@ class EasyMultiClick
     void reset();
     uint8_t numClicks();
     bool overdue();
+    bool overdue(unsigned long now);
     void inc(unsigned long now);
     void setTimeout(unsigned long timeout);
+    unsigned long getTimeout();
   private:
     uint8_t _numClicks;
     unsigned long _firstClick;
