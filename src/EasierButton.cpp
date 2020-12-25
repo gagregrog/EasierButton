@@ -177,6 +177,13 @@ void EasierButton::_handleCallOverdueHolds()
 
 void EasierButton::_handleMultiClick(unsigned long &now)
 {
+  // if we are in this realm then we are holding the button, not pressing it
+  if (_multiClick.overdue(now) && easyButton.pressedFor(_multiClick.getTimeout() / 2)) {
+    _multiClick.reset();
+
+    return;
+  };
+
   int numClicks = _multiClick.numClicks();
   if (_multiClickSet && numClicks) {
     if (_onTripleClick) {

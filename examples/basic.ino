@@ -109,7 +109,7 @@ void setup() {
   delay(250);
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
-/*
+
   // onPress callbacks are fired at the rising edge, every single time
   myBtn.setOnPressed(onPress);
 
@@ -133,7 +133,6 @@ void setup() {
 
   // called if pressed for pressedDuration >= 3000ms
   myBtn.setOnReleasedAfter(3000, onReleasedAfterThree);
-*/
 
   // you can modify the multiClick timeout to allow for slower clicks
   // default is 375ms for single/double clicks
@@ -157,6 +156,10 @@ void setup() {
   // if no double click occurs in the timeout, but a single click is registered,
   // the single click callback will fire at the end of the timeout
   myBtn.setOnTripleClick(onTripleClick);
+
+  // Note: For single and double clicks to be fired at the end of a timeout
+  // the button must not have been held for more than half of the timeout.
+  // This is intended to distinguish clicks from holds
 
   // Caution:
   // Use onRelease and onPress callbacks sparingly.
