@@ -19,8 +19,9 @@ struct EasyTimer {
 };
 
 struct DelayedCb {
-  callback cb;
   unsigned long duration;
+  callback cb;
+  bool strict;
 };
 
 typedef void (*voidCallback) ();
@@ -52,22 +53,27 @@ class EasierButton
     void setOnPressed(voidCallback cb);
     void setOnPressed(voidCallbackTimer cb);
     void setOnHold(unsigned long duration, callback cb);
+    void setOnHold(unsigned long duration, callback cb, bool strict);
     
     void setOnReleased(voidCallback cb);
     void setOnReleased(voidCallbackTimer cb);
     void setOnReleasedAfter(unsigned long duration, callback cb);
-    
+    void setOnReleasedAfter(unsigned long duration, callback cb, bool strict);
     
     void setMultiClickTimeout(unsigned long timeout);
     void setOnSingleClick(voidCallback cb);
     void setOnDoubleClick(voidCallback cb);
     void setOnTripleClick(voidCallback cb);
 
+    void defineMaxClickDuration(unsigned long duration);
   private:
     bool _begun;
     bool _lastState;
     bool _heldAtBoot;
     bool _pressedAtBoot;
+    bool _ignoreNextRelease;
+    bool _ignoreTimedOutClicks;
+    unsigned long _maxClickDuration;
 
     void _setup();
     void _handleCallOverdueHolds();
@@ -99,7 +105,6 @@ class EasierButton
 
     hold_obj_vector _onHoldObjs;
     delay_vector _onReleasedObjs;
-
 };
 
 #endif
