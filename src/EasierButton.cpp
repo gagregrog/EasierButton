@@ -45,10 +45,13 @@ void EasierButton::_setup()
   _heldAtBoot = false;
   _pressedAtBoot = false;
   _multiClickSet = false;
+  _ignoreNextRelease = false;
+  _ignoreTimedOutClicks = false;
 
   unsigned long now = millis();
   _lastPress = now;
   _lastRelease = now;
+  _maxClickDuration = 400;
 }
 
 void EasierButton::_handlePressed(unsigned long &now)
@@ -71,10 +74,6 @@ void EasierButton::_handlePressed(unsigned long &now)
   {
     _onPressed();
   }
-
-  if (_multiClickSet) {
-    _multiClick.inc(now);
-  }
 }
 
 void EasierButton::_handleReleased(unsigned long &now)
@@ -84,23 +83,38 @@ void EasierButton::_handleReleased(unsigned long &now)
   unsigned long sinceLastRelease = now - _lastRelease;
   _lastRelease = now;
 
-  if (_onReleasedTimer)
-  {
-    EasyTimer time = {
-      .sinceLastPress = pressDuration,
-      .sinceLastRelease = sinceLastRelease,
-    };
-
-    _onReleasedTimer(time);
+  if (_multiClickSet) {
+    if (pressDuration < _maxClickDuration) {
+      _multiClick.inc(now);
+    } else {
+      // if the button is held longer than 500ms
+      // don't consider it a click
+      _multiClick.reset();
+    }
   }
-  else if (_onReleased)
-  {
-    _onReleased();
+
+  if (!_ignoreNextRelease) {
+    if (_onReleasedTimer)
+    {
+      EasyTimer time = {
+        .sinceLastPress = pressDuration,
+        .sinceLastRelease = sinceLastRelease,
+      };
+
+      _onReleasedTimer(time);
+    }
+    else if (_onReleased)
+    {
+      _onReleased();
+    }
+
+    _handleCallOnReleasedAfters(pressDuration);
   }
 
   // button released, so mark all holds as not called
   for(HoldObj &obj : _onHoldObjs) obj.reset();
-  _handleCallOnReleasedAfters(pressDuration);
+
+  _ignoreNextRelease = false;
 }
 
 void EasierButton::_handleCallOnReleasedAfters(unsigned long &pressDuration)
@@ -123,6 +137,11 @@ void EasierButton::_handleCallOnReleasedAfters(unsigned long &pressDuration)
   // if we found an onReleaseAfter cb that was longer than the length of the button press, call it now
   if (longestHeldIdx > -1) {
     _onReleasedObjs[longestHeldIdx].cb();
+
+    // if it is strict, cancel any future timed out multi clicks
+    if (_onReleasedObjs[longestHeldIdx].strict) {
+      _ignoreTimedOutClicks = true;
+    }
   }
 }
 
@@ -170,7 +189,11 @@ void EasierButton::_handleCallOverdueHolds()
 
     if (easyButton.pressedFor(obj.duration))
     {
-      obj.trigger();
+      bool strict = obj.trigger();
+      // if this callback is strict, ignore future button releases
+      if (strict) {
+        _ignoreNextRelease = true;
+      }
     }
   }
 }
@@ -178,8 +201,10 @@ void EasierButton::_handleCallOverdueHolds()
 void EasierButton::_handleMultiClick(unsigned long &now)
 {
   // if we are in this realm then we are holding the button, not pressing it
-  if (_multiClick.overdue(now) && easyButton.pressedFor(_multiClick.getTimeout() / 2)) {
+  if (_ignoreTimedOutClicks || _multiClick.overdue(now)
+  ) {
     _multiClick.reset();
+    _ignoreTimedOutClicks = false;
 
     return;
   };
@@ -274,6 +299,10 @@ bool EasierButton::heldAtBoot() {
   return _heldAtBoot;
 }
 
+void EasierButton::defineMaxClickDuration(unsigned long duration) {
+  _maxClickDuration = duration;
+}
+
 void EasierButton::setOnPressed(voidCallback cb) {
   _onPressed = cb;
 }
@@ -314,14 +343,24 @@ void EasierButton::setMultiClickTimeout(unsigned long timeout) {
 }
 
 void EasierButton::setOnHold(unsigned long duration, callback cb) {
-  HoldObj obj(duration, cb);
+  setOnHold(duration, cb, true);
+}
+
+void EasierButton::setOnHold(unsigned long duration, callback cb, bool strict) {
+  HoldObj obj(duration, cb, strict);
   _onHoldObjs.push_back(obj);
 }
 
 void EasierButton::setOnReleasedAfter(unsigned long duration, callback cb) {
+  setOnReleasedAfter(duration, cb, true);
+}
+
+void EasierButton::setOnReleasedAfter(unsigned long duration, callback cb, bool strict) {
   DelayedCb obj = {
-    cb = cb,
-    duration = duration,
+    duration,
+    cb,
+    strict,
   };
+
   _onReleasedObjs.push_back(obj);
 }
