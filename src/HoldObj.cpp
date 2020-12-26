@@ -9,11 +9,12 @@
 #include <vector>
 
 // constructor
-HoldObj::HoldObj(unsigned long holdDuration, callback cb)
+HoldObj::HoldObj(unsigned long holdDuration, callback cb, bool strict)
 {
   duration = holdDuration;
   _cb = cb;
   called = false;
+  _strict = strict;
 }
 
 // Public Members
@@ -22,9 +23,11 @@ void HoldObj::reset() {
   called = false;
 }
 
-void HoldObj::trigger() {
-  if (called) return;
+bool HoldObj::trigger() {
+  if (called) return false;
 
   called = true;
   _cb();
+
+  return _strict;
 }

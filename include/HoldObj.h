@@ -15,13 +15,14 @@ typedef std::function<void()> callback;
 class HoldObj
 {
   public:
-    HoldObj(unsigned long holdDuration, callback cb);
+    HoldObj(unsigned long holdDuration, callback cb, bool strict);
     bool called;
     void reset();
-    void trigger();
+    bool trigger();
     unsigned long duration;
   private:
     callback _cb;
+    bool _strict;
 };
 
 #endif
