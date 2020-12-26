@@ -59,6 +59,7 @@ void onPress(EasyTimer time) {
 // or void onRelease();
 // called EVERY time the button is released
 // except when released immediately after a reboot hold
+// or when canceled via a hold callback
 void onRelease(EasyTimer time) {
   Serial.print(F("You released the button! It was held for "));
   Serial.print(time.sinceLastPress);
@@ -67,16 +68,20 @@ void onRelease(EasyTimer time) {
   Serial.println(F("ms ago."));
 }
 
+void shortestHold() {
+  Serial.println("onHold: You held the button for 1 second. Since strict = false, I didn't cancel any other callbacks.");
+}
+
 void shortHold() {
-  Serial.println("You held the button for 1 second.");
+  Serial.println("You held the button for 5 seconds.");
 }
 
 void medHold() {
-  Serial.println("You held the button for 3 seconds");
+  Serial.println("You held the button for 10 seconds");
 }
 
 void longHold() {
-  Serial.println("You held the button for 5 seconds");
+  Serial.println("You held the button for 15 seconds");
 }
 
 void onSingleClick() {
@@ -89,6 +94,10 @@ void onDoubleClick() {
 
 void onTripleClick() {
   Serial.println("Your press was a TRIPLE click");
+}
+
+void onReleasedAfterLoose() {
+  Serial.println("You held the button for at least one half second, and less than one second. Notice that the multiClick callback got called too, since I'm not in strict mode.");
 }
 
 void onReleasedAfterOne() {
@@ -111,20 +120,32 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
 
   // onPress callbacks are fired at the rising edge, every single time
+  // only one onPress callback is permitted (overwrite if called again)
   myBtn.setOnPressed(onPress);
 
-  // onRelease callbacks are fired at the falling edge, every single time
+  // onRelease callbacks are fired at the falling edge, every single time (unless canceled)
+  // only one onRelease callback is permitted (overwrite if called again)
   myBtn.setOnReleased(onRelease);
 
   // hold callbacks are fired only if the button remains pressed for the specified duration
-  myBtn.setOnHold(1000, shortHold);
-  myBtn.setOnHold(3000, medHold);
-  myBtn.setOnHold(5000, longHold);
+  // hold callbacks do not cancel future hold callbacks, each of these will be called if their hold duration is met
+  myBtn.setOnHold(5000, shortHold);
+  myBtn.setOnHold(10000, medHold);
+  myBtn.setOnHold(15000, longHold);
 
-  // onReleasedAfter are similar to onHold, except that onHold's get called as soon as
-  // their time requirements are met. onReleasedAfter's wait until the button is released,
+  // hold callbacks are strict by default
+  // this means if they are called they cancel the subsequent onRelease callbacks
+  // specifically, they will cancel onRelease and onReleaseAfter triggered on the next release
+  // to override this behavior, provide a false flag to the setter
+  myBtn.setOnHold(1000, shortestHold, false);
+
+  // onReleasedAfter callbacks are similar to onHold callbacks, 
+  // except that onHold's get called as soon as their time requirements are met.
+  // onReleasedAfter callbacks wait until the button is released,
   // and only the callback with the longest duration <= to the button press time is called
-  
+
+  // since onReleasedAfter callbacks are canceled by onHold strict mode,
+  // you'd be best off using a duration less than your onHold durations (if they are strict)
   // called if pressed for 1000ms <= pressedDuration < 2000ms
   myBtn.setOnReleasedAfter(1000, onReleasedAfterOne);
 
@@ -134,13 +155,18 @@ void setup() {
   // called if pressed for pressedDuration >= 3000ms
   myBtn.setOnReleasedAfter(3000, onReleasedAfterThree);
 
-  // you can modify the multiClick timeout to allow for slower clicks
-  // default is 375ms for single/double clicks
-  // 600ms is set for triple clicks unless you have already set a different value
-  // myBtn.setMultiClickTimeout(1000);
+  // like onHold callbacks, onReleasedAfter callbacks are in strict mode by default
+  // this means that if called, they will cancel upcoming click callbacks
+  // for example, if you do a single click followed by a strict onReleasedAfter cb,
+  // the click callback will not be called when it times out
+  // to override this behavior, pass false when setting the cb
+  myBtn.setOnReleasedAfter(500, onReleasedAfterLoose);
+
+  // If you're more interested in clicks than holds, you can use the multiClick setter
 
   // the singleClickCallback is only called if no second or third presses occurs before the MultiClickTimeout
   // note that this means single button presses will only ever fire once per MultiClickTimeout interval (unless no double or triple click handlers are set, in which case it behaves like onPress)
+  // note that these callbacks will not be called if a strict onHoldAfter has been called
   myBtn.setOnSingleClick(onSingleClick);
 
   // if a second click occurs before the MultiClickTimeout, and no triple click handler is set,
@@ -157,23 +183,31 @@ void setup() {
   // the single click callback will fire at the end of the timeout
   myBtn.setOnTripleClick(onTripleClick);
 
-  // Note: For single and double clicks to be fired at the end of a timeout
-  // the button must not have been held for more than half of the timeout.
-  // This is intended to distinguish clicks from holds
+  // you can modify the multiClick timeout to allow for slower clicks
+  // default is 375ms for single/double clicks
+  // 600ms is set for triple clicks unless you have already set a different value
+  myBtn.setMultiClickTimeout(1000);
+
+  // To distinguish clicks from holds, clicks must be held for less than 500ms
+  // you can override this value as needed
+  myBtn.defineMaxClickDuration(400);
+
 
   // Caution:
   // Use onRelease and onPress callbacks sparingly.
   // It can quickly become overwhelming if you are using too many kinds of callbacks.
-  // If you need to detect double clicks, use onSingleClick and onDoubleClick without onPress and onRelease.
 
   // If you don't need to detect double or triple clicks,
   // consider using void onPress(EasyTimer time); and time.sinceLastPress to determine click frequency,
   // or void onRelease(EasyTimer time); and time.sinceLastPress to determine hold duration.
 
-  // start normally
+  // Setting up the button
+
+  // You can start normally
   myBtn.begin();
   
-  // check that the button is held for at least 5 seconds on start, returning a bool
+  // or you can check that the button is held for a specified duration on start,
+  // returning a bool
   // Warning: This is blocking! Blocks until duration is reached or button is released
 
   // if (myBtn.begin(5000)) {
@@ -182,7 +216,8 @@ void setup() {
   //   Serial.println(F("Button NOT held for 5 seconds at boot"));
   // }
 
-  // check that the button is held for at least 5 seconds on start, returning the duration that the button was held for
+  // or you can check that the button is held for a duration,
+  // returning the duration that the button was held for
   // Warning: This is blocking! Blocks until duration is reached or button is released
 
   // unsigned long bootHoldElapsed = myBtn.begin(5000, true);

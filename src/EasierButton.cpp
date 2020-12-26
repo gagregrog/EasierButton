@@ -108,6 +108,9 @@ void EasierButton::_handleReleased(unsigned long &now)
       _onReleased();
     }
 
+    // TODO: consider moving this above the release callback
+    // and canceling the release callbacks if strict 
+    // release afters are called
     _handleCallOnReleasedAfters(pressDuration);
   }
 
