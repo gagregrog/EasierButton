@@ -42,13 +42,14 @@ void EasierButton::_setup()
 {
   _begun = false;
   _lastState = false;
-  _heldAtBoot = false;
   _pressedAtBoot = false;
   _multiClickSet = false;
+  _firstClickInLoop = false;
   _ignoreNextRelease = false;
   _ignoreTimedOutClicks = false;
 
   unsigned long now = millis();
+  _heldAtBoot = 0;
   _lastPress = now;
   _lastRelease = now;
   _maxClickDuration = 400;
@@ -56,6 +57,10 @@ void EasierButton::_setup()
 
 void EasierButton::_handlePressed(unsigned long &now)
 { 
+  if (!_firstClickInLoop) {
+    _firstClickInLoop = true;
+  }
+
   _lastState = true;
   unsigned long pressToPress = now - _lastPress;
   _lastPress = now;
@@ -79,6 +84,13 @@ void EasierButton::_handlePressed(unsigned long &now)
 void EasierButton::_handleReleased(unsigned long &now)
 {
   _lastState = false;
+
+  if (!_firstClickInLoop) {
+    _lastRelease = now;
+    _lastPress = now;
+    return;
+  }
+
   unsigned long pressDuration = now - _lastPress;
   unsigned long sinceLastRelease = now - _lastRelease;
   _lastRelease = now;
@@ -156,32 +168,16 @@ void EasierButton::_checkBootPress()
   }
 }
 
-unsigned long EasierButton::_checkBootHold(int duration, bool returnElapsed)
+unsigned long EasierButton::_checkBootHold(unsigned long duration, bool returnElapsed)
 {
-  unsigned long elapsed = 0;
-  unsigned long start = millis();
-  bool held = easyButton.isPressed();
-  _pressedAtBoot = held;
+  unsigned long elapsed = getHoldDuration(duration, true);
 
-  while (held && (elapsed < (unsigned long)duration)) {
-    easyButton.read();
-    held = !easyButton.wasReleased();
-    _heldAtBoot = held;
-
-    if (!held) break;
-
-    delay(10); // so we don't go crazy
-    elapsed = millis() - start;
-  }
-
-  return elapsed;
+  return returnElapsed ? elapsed : (elapsed >= (unsigned long)duration);
 }
 
-bool EasierButton::_checkBootHold(int duration)
+bool EasierButton::_checkBootHold(unsigned long duration)
 {
-  unsigned long elapsed = _checkBootHold(duration, true);
-
-  return elapsed >= (unsigned long)duration;
+  return _checkBootHold(duration, false);
 }
 
 void EasierButton::_handleCallOverdueHolds()
@@ -204,8 +200,7 @@ void EasierButton::_handleCallOverdueHolds()
 void EasierButton::_handleMultiClick(unsigned long &now)
 {
   // if we are in this realm then we are holding the button, not pressing it
-  if (_ignoreTimedOutClicks || _multiClick.overdue(now)
-  ) {
+  if (_ignoreTimedOutClicks) {
     _multiClick.reset();
     _ignoreTimedOutClicks = false;
 
@@ -253,7 +248,7 @@ void EasierButton::begin() {
   _checkBootPress();
 }
 
-bool EasierButton::begin(int duration) {
+bool EasierButton::begin(unsigned long duration) {
   if (_begun) return false;
 
   _begun = true;
@@ -262,7 +257,7 @@ bool EasierButton::begin(int duration) {
   return _checkBootHold(duration);
 }
 
-unsigned long EasierButton::begin(int duration, bool returnElapsed) {
+unsigned long EasierButton::begin(unsigned long duration, bool returnElapsed) {
   if (_begun) return 0;
 
   _begun = true;
@@ -273,6 +268,8 @@ unsigned long EasierButton::begin(int duration, bool returnElapsed) {
 
 void EasierButton::update()
 {
+  bool noFirstClick = !_firstClickInLoop;
+
   unsigned long now = millis();
   easyButton.read();
 
@@ -286,6 +283,9 @@ void EasierButton::update()
     _handlePressed(now);
   }
 
+  // let's not respond to releases/holds from boot
+  if (noFirstClick) return;
+
   if (easyButton.isPressed()) {
     _handleCallOverdueHolds();
   }
@@ -298,7 +298,7 @@ bool EasierButton::pressedAtBoot() {
   return _pressedAtBoot;
 }
 
-bool EasierButton::heldAtBoot() {
+unsigned long EasierButton::heldAtBoot() {
   return _heldAtBoot;
 }
 
@@ -366,4 +366,67 @@ void EasierButton::setOnReleasedAfter(unsigned long duration, callback cb, bool 
   };
 
   _onReleasedObjs.push_back(obj);
+}
+
+bool EasierButton::waitForClick(unsigned long duration)
+{
+  unsigned long start = millis();
+  
+  // if we start in a pressed state and never release, don't consider that a click
+  while (easyButton.isPressed()) {
+    delay(10);
+    if (millis() - start >= duration) return false;
+    easyButton.read();
+  }
+
+  // if we made it here, we've found an unpressed state
+  while (easyButton.isReleased()) {
+    delay(10);
+    if (millis() - start >= duration) return false;
+    easyButton.read();
+  }
+
+  // if we exit the loop above then a button press occurred
+  return true;
+}
+
+unsigned long EasierButton::getHoldDuration(unsigned long duration)
+{
+  return getHoldDuration(duration, false);
+}
+
+unsigned long EasierButton::getHoldDuration(unsigned long duration,  bool boot)
+{
+  unsigned long elapsed = 0;
+  unsigned long start = millis();
+  bool held = easyButton.isPressed();
+
+  while (held && (elapsed < (unsigned long)duration)) {
+    easyButton.read();
+    held = !easyButton.wasReleased();
+
+    if (!held) break;
+
+    delay(10); // so we don't go crazy
+    elapsed = millis() - start;
+  }
+
+  if (boot) {
+    _heldAtBoot += elapsed;
+    if (elapsed) {
+      _pressedAtBoot = true;
+    }
+  }
+
+  return elapsed;
+}
+
+bool EasierButton::heldFor(unsigned long duration, bool boot) {
+  unsigned long elapsed = getHoldDuration(duration, boot);
+
+  return elapsed >= duration;
+}
+
+bool EasierButton::heldFor(unsigned long duration) {
+  return heldFor(duration, false);
 }

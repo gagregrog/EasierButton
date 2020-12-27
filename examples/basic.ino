@@ -224,6 +224,45 @@ void setup() {
   // Serial.print(F("The button was held for "));
   // Serial.print(bootHoldElapsed);
   // Serial.println(F("ms on boot."));
+
+  // or you can use the getHoldDuration helper to build more complex logic
+  // pass boot=true to add hold duration to the heldAtBoot variable
+  // if (myBtn.getHoldDuration(1000, true) >= 1000) {
+    // Serial.println("Button held for 1000ms at boot");
+    // if (myBtn.getHoldDuration(1000, true) {
+      // Serial.println("Button held for 2000ms at boot");
+    // }
+  // }
+
+  // but if you only need to know if a hold was at least a certain duration, use heldFor
+  // you can also pass boot = true to add the duration to the heldAtBoot variable
+  // if (myBtn.heldFor(1000)) {
+    // Serial.println("Button held for 1000ms at boot");
+    // if (myBtn.heldFor(1000) {
+      // Serial.println("Button held for 2000ms at boot");
+    // }
+  // }
+
+  // another useful function is waitForClick
+  // this is blocking, but can be a useful escape hatch
+  // bool selfDestruct = false;
+  // if (myBtn.heldFor(2000)) {
+  //   Serial.println("Self destructing in 5 seconds unless you click to cancel");
+
+  //   if (myBtn.waitForClick(5000)) {
+  //     Serial.println("Self destruct aborted!")
+  //   } else {
+  //     Serial.println("__SELF_DESTRUCT__");
+  //   }
+  // }
+
+  if (myBtn.heldAtBoot) {
+    Serial.print("Button was held for ");
+    Serial.print(muBtn.heldAtBoot);
+    Serial.println("ms at boot.");
+  } else if (myBtn.pressedAtBoot) {
+    Serial.println("Button was pressed at boot!");
+  }
 }
 
 void loop() {

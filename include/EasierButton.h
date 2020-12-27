@@ -42,13 +42,18 @@ class EasierButton
     EasierButton(uint8_t pin, uint32_t debounce, bool pullUp, bool active_low);
 
     void begin();
-    bool begin(int duration);
-    unsigned long begin(int duration, bool returnElapsed);
+    bool begin(unsigned long duration);
+    unsigned long begin(unsigned long duration, bool returnElapsed);
 
     void update();
 
-    bool heldAtBoot();
     bool pressedAtBoot();
+    unsigned long heldAtBoot();
+    bool waitForClick(unsigned long duration);
+    bool heldFor(unsigned long duration);
+    bool heldFor(unsigned long duration, bool boot);
+    unsigned long getHoldDuration(unsigned long duration);
+    unsigned long getHoldDuration(unsigned long duration, bool boot);
 
     void setOnPressed(voidCallback cb);
     void setOnPressed(voidCallbackTimer cb);
@@ -69,10 +74,11 @@ class EasierButton
   private:
     bool _begun;
     bool _lastState;
-    bool _heldAtBoot;
     bool _pressedAtBoot;
+    bool _firstClickInLoop;
     bool _ignoreNextRelease;
     bool _ignoreTimedOutClicks;
+    unsigned long _heldAtBoot;
     unsigned long _maxClickDuration;
 
     void _setup();
@@ -83,8 +89,8 @@ class EasierButton
     void _handleCallOnReleasedAfters(unsigned long &pressDuration);
     
     void _checkBootPress();
-    bool _checkBootHold(int duration);
-    unsigned long _checkBootHold(int duration, bool returnElapsed);
+    bool _checkBootHold(unsigned long duration);
+    unsigned long _checkBootHold(unsigned long duration, bool returnElapsed);
 
     unsigned long _lastPress;
     unsigned long _lastRelease;
