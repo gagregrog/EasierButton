@@ -9,7 +9,7 @@
 #include <vector>
 
 // constructor
-HoldObj::HoldObj(unsigned long holdDuration, callback cb, bool strict)
+HoldObj::HoldObj(unsigned long holdDuration, voidCallback cb, bool strict)
 {
   duration = holdDuration;
   _cb = cb;

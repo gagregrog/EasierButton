@@ -345,20 +345,20 @@ void EasierButton::setMultiClickTimeout(unsigned long timeout) {
   _multiClick.setTimeout(timeout);
 }
 
-void EasierButton::setOnHold(unsigned long duration, callback cb) {
+void EasierButton::setOnHold(unsigned long duration, voidCallback cb) {
   setOnHold(duration, cb, true);
 }
 
-void EasierButton::setOnHold(unsigned long duration, callback cb, bool strict) {
+void EasierButton::setOnHold(unsigned long duration, voidCallback cb, bool strict) {
   HoldObj obj(duration, cb, strict);
   _onHoldObjs.push_back(obj);
 }
 
-void EasierButton::setOnReleasedAfter(unsigned long duration, callback cb) {
+void EasierButton::setOnReleasedAfter(unsigned long duration, voidCallback cb) {
   setOnReleasedAfter(duration, cb, true);
 }
 
-void EasierButton::setOnReleasedAfter(unsigned long duration, callback cb, bool strict) {
+void EasierButton::setOnReleasedAfter(unsigned long duration, voidCallback cb, bool strict) {
   DelayedCb obj = {
     duration,
     cb,

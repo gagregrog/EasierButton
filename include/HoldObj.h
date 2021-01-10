@@ -10,18 +10,18 @@
 #include "Arduino.h"
 #include <vector>
 
-typedef std::function<void()> callback;
+typedef void (*voidCallback) ();
 
 class HoldObj
 {
   public:
-    HoldObj(unsigned long holdDuration, callback cb, bool strict);
+    HoldObj(unsigned long holdDuration, voidCallback cb, bool strict);
     bool called;
     void reset();
     bool trigger();
     unsigned long duration;
   private:
-    callback _cb;
+    voidCallback _cb;
     bool _strict;
 };
 

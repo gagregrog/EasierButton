@@ -7,6 +7,10 @@
 #ifndef EasierButton_h
 #define EasierButton_h
 
+#ifndef __STD_HEADER_VECTOR
+#include <ArduinoSTL.h>
+#endif
+
 #include <vector>
 #include "Arduino.h"
 #include "HoldObj.h"
@@ -18,16 +22,15 @@ struct EasyTimer {
   unsigned long sinceLastRelease;
 };
 
-struct DelayedCb {
-  unsigned long duration;
-  callback cb;
-  bool strict;
-};
-
 typedef void (*voidCallback) ();
 typedef void (*voidCallbackTimer) (EasyTimer);
 
-typedef std::function<void()> callback;
+struct DelayedCb {
+  unsigned long duration;
+  voidCallback cb;
+  bool strict;
+};
+
 typedef std::vector<HoldObj> hold_obj_vector;
 typedef std::vector<DelayedCb> delay_vector;
 
@@ -57,13 +60,13 @@ class EasierButton
 
     void setOnPressed(voidCallback cb);
     void setOnPressed(voidCallbackTimer cb);
-    void setOnHold(unsigned long duration, callback cb);
-    void setOnHold(unsigned long duration, callback cb, bool strict);
+    void setOnHold(unsigned long duration, voidCallback cb);
+    void setOnHold(unsigned long duration, voidCallback cb, bool strict);
     
     void setOnReleased(voidCallback cb);
     void setOnReleased(voidCallbackTimer cb);
-    void setOnReleasedAfter(unsigned long duration, callback cb);
-    void setOnReleasedAfter(unsigned long duration, callback cb, bool strict);
+    void setOnReleasedAfter(unsigned long duration, voidCallback cb);
+    void setOnReleasedAfter(unsigned long duration, voidCallback cb, bool strict);
     
     void setMultiClickTimeout(unsigned long timeout);
     void setOnSingleClick(voidCallback cb);
