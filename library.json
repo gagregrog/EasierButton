@@ -18,8 +18,7 @@
   "license": "MIT",
   "homepage": "https://github.com/RobertMcReed/EasierButton",
   "dependencies": {
-    "evert-arias/EasyButton": "^2.0.1",
-    "mike-matera/ArduinoSTL": "^1.1.0"
+    "evert-arias/EasyButton": "^2.0.1"
   },
   "frameworks": "arduino",
   "platforms": "*"
