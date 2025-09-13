@@ -7,6 +7,10 @@
 #ifndef EasierButton_h
 #define EasierButton_h
 
+#ifdef __AVR__
+#include <ArduinoSTL.h>
+#endif
+
 #include <vector>
 #include "Arduino.h"
 #include "HoldObj.h"
