@@ -19,14 +19,13 @@
   "homepage": "https://github.com/RobertMcReed/EasierButton",
   "dependencies": [
     {
-      "owner": "evert-arias",
       "name": "EasyButton",
-      "version": "^2.0.1"
+      "version": "https://github.com/gagregrog/EasyButton.git",
+      "platforms": "*"
     },
     {
-      "owner": "gagregrog",
       "name": "ArduinoSTL",
-      "version": "^1.1.0",
+      "version": "https://github.com/gagregrog/ArduinoSTL.git/#v1.1.0",
       "platforms": ["atmelavr"]
     }
   ],
